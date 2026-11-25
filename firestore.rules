@@ -1,0 +1,157 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global safety net: default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Primitive Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidAvatar(val) {
+      return val is string && val in ['yayle', 'kiko', 'nara'];
+    }
+
+    function isValidLanguage(val) {
+      return val is string && val in ['id', 'en', 'ms'];
+    }
+
+    // --- Validation Blueprints ---
+    function isValidPlayerProgress(data, userId) {
+      return data.keys().hasAll([
+          'ownerId', 'nickname', 'avatarId', 'language',
+          'highScore', 'totalStars', 'highestStage', 'quizzesSolved',
+          'encryptedVault', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'nickname', 'avatarId', 'language',
+          'highScore', 'totalStars', 'highestStage', 'quizzesSolved',
+          'encryptedVault', 'createdAt', 'updatedAt'
+        ])
+        && data.ownerId is string
+        && isValidId(data.ownerId)
+        && data.ownerId == userId
+        && data.ownerId == request.auth.uid
+        && data.nickname is string
+        && data.nickname.size() >= 1
+        && data.nickname.size() <= 32
+        && isValidAvatar(data.avatarId)
+        && isValidLanguage(data.language)
+        && data.highScore is int && data.highScore >= 0 && data.highScore <= 1000000
+        && data.totalStars is int && data.totalStars >= 0 && data.totalStars <= 999
+        && data.highestStage is int && data.highestStage >= 0 && data.highestStage <= 2
+        && data.quizzesSolved is int && data.quizzesSolved >= 0 && data.quizzesSolved <= 100000
+        && data.encryptedVault is string && data.encryptedVault.size() <= 8192
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidLeaderboardEntry(data, userId) {
+      return data.keys().hasAll([
+          'ownerId', 'nickname', 'avatarId', 'score',
+          'stars', 'quizzesSolved', 'stage', 'isPublic',
+          'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'nickname', 'avatarId', 'score',
+          'stars', 'quizzesSolved', 'stage', 'isPublic',
+          'createdAt', 'updatedAt'
+        ])
+        && data.ownerId is string
+        && isValidId(data.ownerId)
+        && data.ownerId == userId
+        && data.ownerId == request.auth.uid
+        && data.nickname is string
+        && data.nickname.size() >= 1
+        && data.nickname.size() <= 32
+        && isValidAvatar(data.avatarId)
+        && data.score is int && data.score >= 0 && data.score <= 1000000
+        && data.stars is int && data.stars >= 0 && data.stars <= 999
+        && data.quizzesSolved is int && data.quizzesSolved >= 0 && data.quizzesSolved <= 100000
+        && data.stage is int && data.stage >= 1 && data.stage <= 3
+        && data.isPublic is bool && data.isPublic == true
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // --- Collection: /users/{userId} (Owner-Only Private Progress & Encrypted Vault) ---
+    match /users/{userId} {
+      allow get: if isSignedIn()
+        && isValidId(userId)
+        && request.auth.uid == userId;
+
+      allow list: if false;
+
+      allow create: if isVerifiedUser()
+        && isValidId(userId)
+        && request.auth.uid == userId
+        && isValidPlayerProgress(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser()
+        && isValidId(userId)
+        && request.auth.uid == userId
+        && isValidPlayerProgress(incoming(), userId)
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'nickname', 'avatarId', 'language',
+          'highScore', 'totalStars', 'highestStage',
+          'quizzesSolved', 'encryptedVault', 'updatedAt'
+        ]);
+
+      allow delete: if false;
+    }
+
+    // --- Collection: /leaderboard/{userId} (Public Zero-PII Ranking) ---
+    match /leaderboard/{userId} {
+      allow get: if isValidId(userId)
+        && resource.data.isPublic == true;
+
+      allow list: if resource.data.isPublic == true;
+
+      allow create: if isVerifiedUser()
+        && isValidId(userId)
+        && request.auth.uid == userId
+        && isValidLeaderboardEntry(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser()
+        && isValidId(userId)
+        && request.auth.uid == userId
+        && isValidLeaderboardEntry(incoming(), userId)
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'nickname', 'avatarId', 'score', 'stars',
+          'quizzesSolved', 'stage', 'updatedAt'
+        ]);
+
+      allow delete: if false;
+    }
+  }
+}

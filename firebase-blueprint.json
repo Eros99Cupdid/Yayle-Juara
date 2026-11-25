@@ -1,0 +1,159 @@
+{
+  "entities": {
+    "PlayerProgress": {
+      "title": "PlayerProgress",
+      "description": "Private kid-safe player progress and encrypted parental/playtime backup owned strictly by the authenticated user.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID of the player."
+        },
+        "nickname": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32,
+          "description": "Kid-friendly display alias (no real PII required)."
+        },
+        "avatarId": {
+          "type": "string",
+          "enum": ["yayle", "kiko", "nara"],
+          "description": "Selected eco-mascot character."
+        },
+        "language": {
+          "type": "string",
+          "enum": ["id", "en", "ms"],
+          "description": "Selected UI language."
+        },
+        "highScore": {
+          "type": "number",
+          "description": "Best score achieved."
+        },
+        "totalStars": {
+          "type": "number",
+          "description": "Total stars collected across stages."
+        },
+        "highestStage": {
+          "type": "number",
+          "description": "Highest unlocked stage index (0-2)."
+        },
+        "quizzesSolved": {
+          "type": "number",
+          "description": "Cumulative environmental quiz questions answered correctly."
+        },
+        "encryptedVault": {
+          "type": "string",
+          "maxLength": 8192,
+          "description": "AES-256-GCM base64 ciphertext storing parental control settings and daily playtime logs."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "ownerId",
+        "nickname",
+        "avatarId",
+        "language",
+        "highScore",
+        "totalStars",
+        "highestStage",
+        "quizzesSolved",
+        "encryptedVault",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "LeaderboardEntry": {
+      "title": "LeaderboardEntry",
+      "description": "Public zero-PII leaderboard ranking document.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID matching document ID."
+        },
+        "nickname": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32,
+          "description": "Public display nickname."
+        },
+        "avatarId": {
+          "type": "string",
+          "enum": ["yayle", "kiko", "nara"],
+          "description": "Selected mascot."
+        },
+        "score": {
+          "type": "number",
+          "description": "Best leaderboard score."
+        },
+        "stars": {
+          "type": "number",
+          "description": "Total stars earned."
+        },
+        "quizzesSolved": {
+          "type": "number",
+          "description": "Environmental quiz questions mastered."
+        },
+        "stage": {
+          "type": "number",
+          "description": "Highest stage reached (1-3)."
+        },
+        "isPublic": {
+          "type": "boolean",
+          "description": "Explicit opt-in flag for leaderboard listing."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "ownerId",
+        "nickname",
+        "avatarId",
+        "score",
+        "stars",
+        "quizzesSolved",
+        "stage",
+        "isPublic",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/PlayerProgress"
+      },
+      "description": "Owner-only private progress and AES-256-GCM encrypted parental settings vault."
+    },
+    "/leaderboard/{userId}": {
+      "schema": {
+        "$ref": "#/entities/LeaderboardEntry"
+      },
+      "description": "Public zero-PII leaderboard entries filtered by isPublic == true."
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Yayle Juara",
+  "description": "Game edukatif lingkungan dan tantangan fisika seru untuk anak-anak dengan kuis interaktif, papan peringkat, kontrol orang tua, mode offline terenkripsi, dan instalasi PWA Android/iOS via QR code.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
